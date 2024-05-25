@@ -1,0 +1,11 @@
+openpyxl
+requests
+selenium
+pyautogui
+fake_useragent
+tkinter
+csv
+subprocess
+psutil
+selenium
+socket

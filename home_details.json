@@ -1,0 +1,28 @@
+[
+    {
+        "House Name": "29 Severn Street, Epping, Vic 3076",
+        "Agent Organisation": "Ray White - Mill Park",
+        "Size": "585 m² land size",
+        "Agent Phone": "0419551550; 0418345089",
+        "Agent Name": "Charlie Barbanti; Kon Kouvas",
+        "Bedrooms": "4 Bedrooms",
+        "Bathroom": "2 Bathrooms",
+        "Parking": "1 Parking Space"
+    },
+    {
+        "House Name": "10 Glencoe Court, Epping, Vic 3076",
+        "Agent Organisation": "Barry Plant Epping",
+        "Agent Phone": "0420319464; 0403053836",
+        "Agent Name": "George Stathopoulos; Michael Stamboulidis"
+    },
+    {
+        "House Name": "11 Absinthe Place, Epping, Vic 3076",
+        "Agent Organisation": "Harcourts Rata & Co",
+        "Size": "375 m² land size",
+        "Agent Phone": "0456203040",
+        "Agent Name": "Sherry Singh",
+        "Bedrooms": "4 Bedrooms",
+        "Bathroom": "3 Bathrooms",
+        "Parking": "2 Parking Spaces"
+    }
+]
