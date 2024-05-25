@@ -303,18 +303,17 @@ class GetDetailsFromWeb():
                     time.sleep(1)
                 if driver.current_url != original_url:
                     original_url=driver.current_url
+                    original_window = driver.current_window_handle
                     # If the URL contains '/buy/', fetch the data
                     data_dict = self.get_data(driver=driver)
                     time.sleep(1)
                     try:
                         driver.switch_to.new_window('tab')
                         time.sleep(1)
-                        driver.switch_to.window(driver.window_handles[1]) 
-                        time.sleep(1)
                         home_details = []
-                        counter=0
+                        counter=1
                         for url,data_list in data_dict.items():
-                            if counter==3:
+                            if counter==2:
                                 break
                             counter+=1
                             driver.get(url)
@@ -322,6 +321,8 @@ class GetDetailsFromWeb():
                             time.sleep(random.uniform(9,15))
                             home_details.append(names)
                         self.write_home_details(home_details, self.json_file_path)
+                        driver.close()
+                        driver.switch_to.window(original_window)
                     except Exception as e:
                         print(f"Error initializing headless WebDriver: {e}")
                     finally:
