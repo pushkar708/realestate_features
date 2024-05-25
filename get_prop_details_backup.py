@@ -15,8 +15,6 @@ import random
 import pyautogui as py
 from fake_useragent import UserAgent
 from selenium.common.exceptions import NoSuchWindowException
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.action_chains import ActionChains
 cwd = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -38,6 +36,18 @@ class GetDetailsFromWeb():
                 chrome_path = data['chrome_path']
         
         return chrome_path
+            
+    
+    def get_free_port(self,start_port=9222):
+        while True:
+            # Check if the port is available
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind(('localhost', start_port))
+                    return start_port
+                except OSError:
+                    # Port is already in use, try the next one
+                    start_port += 1
 
     def close_driver(self,driver):
         driver.quit()
@@ -51,12 +61,20 @@ class GetDetailsFromWeb():
                 pass
         return True
 
-    def get_chrome_process(self):
+    def get_chrome_process(self,is_main,headless=False):
         chrome_path = self.get_chrome_path()
+        if is_main:
+            # user_data_dir = r"C:\Users\nothing\AppData\Local\Google\Chrome\testing_data"
+            user_data_dir = os.path.join(cwd,"testing_data")
+        else:
+            # user_data_dir = r"C:\Users\nothing\AppData\Local\Google\Chrome\testing_data_headless"
+            user_data_dir = os.path.join(cwd,"testing_data_headless")
             
-        remote_debugging_port = 9222
+        remote_debugging_port = self.get_free_port()
         chrome_command = f'"{chrome_path}" --remote-debugging-port={remote_debugging_port}'
-
+        if headless:
+            chrome_command = chrome_command+ f' --headless'
+        
         if os.name == "posix":
             chrome_process = subprocess.Popen(chrome_command,shell=True)
         elif os.name == 'nt':
@@ -251,12 +269,10 @@ class GetDetailsFromWeb():
             root.destroy()
 
         def on_copy_url():
-            pyperclip.copy(master_url)
             root.destroy()
 
         root = tk.Tk()
         root.title("Info")
-        root.attributes("-topmost", True)
 
         label = tk.Label(root, text=f"Please visit the URL: {master_url} and search for the location", wraplength=400)
         label.pack(pady=10)
@@ -275,7 +291,7 @@ class GetDetailsFromWeb():
     
     def main(self):
         master_url="https://www.realestate.com.au/"
-        chrome_process,port=self.get_chrome_process()
+        chrome_process,port=self.get_chrome_process(is_main=True)
 
         # Create Chrome options
         chrome_user_agent = self.get_random_useragent()
@@ -285,7 +301,6 @@ class GetDetailsFromWeb():
 
         # Connect to the existing Chrome instance
         driver = webdriver.Chrome(options=chrome_options)
-        action = ActionChains(driver)
 
         try:
             driver.maximize_window()
@@ -295,9 +310,10 @@ class GetDetailsFromWeb():
         # Now you can interact with the existing Chrome session
         self.show_info_with_copy_button(master_url)
         original_url=''
+        driver_headless=None
         try:                                                                                       
             while not self.is_chrome_window_closed():
-                while not any(substring in driver.current_url.lower() for substring in ["realestate.com.au/buy/", "realestate.com.au/rent/", "realestate.com.au/sold/"]):
+                while "/buy/" not in driver.current_url.lower():
                     if self.is_chrome_window_closed():
                         raise NoSuchWindowException
                     time.sleep(1)
@@ -305,20 +321,33 @@ class GetDetailsFromWeb():
                     original_url=driver.current_url
                     # If the URL contains '/buy/', fetch the data
                     data_dict = self.get_data(driver=driver)
-                    time.sleep(1)
+                    chrome_headless, headless_port = self.get_chrome_process(is_main=False,headless=False)
+
                     try:
-                        driver.switch_to.new_window('tab')
-                        time.sleep(1)
-                        driver.switch_to.window(driver.window_handles[1]) 
-                        time.sleep(1)
+                        chrome_user_agent = self.get_random_useragent()
+                        chrome_options_headless = Options()
+                        chrome_options_headless.add_experimental_option("debuggerAddress", f"127.0.0.1:{headless_port}")
+                        chrome_options_headless.add_argument(f"user-agent={chrome_user_agent}")
+                        chrome_options_headless.add_argument("--disable-gpu")
+                        chrome_options_headless.add_argument("--no-sandbox")
+                        chrome_options_headless.add_argument("--disable-dev-shm-usage")
+                        
+                        
+                        # Connect to the existing Chrome instance
+                        driver_headless = webdriver.Chrome(options=chrome_options_headless)
+                        try:
+                            driver_headless.maximize_window()
+                        except WebDriverException as e:
+                            print(f"Error maximizing window: {e}")
+                        
                         home_details = []
                         counter=0
                         for url,data_list in data_dict.items():
                             if counter==3:
                                 break
                             counter+=1
-                            driver.get(url)
-                            names = self.get_page_details(driver)
+                            driver_headless.get(url)
+                            names = self.get_page_details(driver_headless)
                             time.sleep(random.uniform(9,15))
                             home_details.append(names)
                         self.write_home_details(home_details, self.json_file_path)
@@ -326,19 +355,19 @@ class GetDetailsFromWeb():
                         print(f"Error initializing headless WebDriver: {e}")
                     finally:
                         # Close the browser
-                        if driver:
-                            self.close_driver(driver)
+                        if driver_headless:
+                            self.close_driver(driver_headless)
                         
                         # Terminate the Chrome process opened by the script
                         if not self.is_chrome_window_closed():
-                            chrome_process.kill()
-                            chrome_process.wait()
+                            chrome_headless.kill()
+                            chrome_headless.wait()
 
 
         except NoSuchWindowException:
             # Close the browser
-            if driver:
-                self.close_driver(driver)
+            if driver_headless:
+                self.close_driver(driver_headless)
             
             # Terminate the Chrome process opened by the script
             if not self.is_chrome_window_closed():
@@ -351,8 +380,8 @@ class GetDetailsFromWeb():
         
         finally:
             # Close the browser
-            if driver:
-                self.close_driver(driver)
+            if driver_headless:
+                self.close_driver(driver_headless)
             
             # Terminate the Chrome process opened by the script
             if not self.is_chrome_window_closed():
