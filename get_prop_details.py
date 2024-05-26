@@ -85,12 +85,22 @@ class GetDetailsFromWeb():
                 data["Price"] = property_price[0].text
         
         if 'property_bonds' in self.neended_data_list:
-            if 'rent' in driver.find_elements(By.XPATH,"(//a[@class='breadcrumb__link'])[1]")[0].get_attribute("href"):
-                property_bonds=driver.find_elements(By.XPATH,"//p[@class='Text__Typography-sc-vzn7fr-0 OdxXk']")
+            if 'rent' in driver.find_elements(By.XPATH,"(//a[@class='breadcrumb__link'])[1]")[0].get_attribute("href").lower():
+                property_bonds=driver.find_elements(By.XPATH,"//div[@class='property-info__middle-content']//p[@class='Text__Typography-sc-vzn7fr-0 OdxXk']")
                 if property_bonds:
                     data["Bonds"] = property_bonds[0].text
             else:
                 data["Bonds"] = "Not applicable"
+        
+        if 'sold_date' in self.neended_data_list:
+            if 'sold' in driver.find_elements(By.XPATH,"(//a[@class='breadcrumb__link'])[1]")[0].get_attribute("href").lower():
+                property_sold=driver.find_elements(By.XPATH,"//div[@class='property-info__middle-content']//span")
+                if property_sold:
+                    for listings in property_sold:
+                        if 'sold on' in listings.text.lower():
+                            data["Sold On"] = listings.text
+            else:
+                data["Sold On"] = "Not applicable"
         
         if 'loan_repay_item' in self.neended_data_list:
             loan_repay_item=driver.find_elements(By.ID,"summary-repayments-container")
@@ -352,6 +362,19 @@ class GetDetailsFromWeb():
                 chrome_process.wait()
             print("Selenium window closed")
             exit(1)
+        
+        except AttributeError:
+            # Close the browser
+            if driver:
+                self.quit_driver(driver)
+            
+            # Terminate the Chrome process opened by the script
+            if not self.is_chrome_window_closed():
+                chrome_process.kill()
+                chrome_process.wait()
+            print("Selenium window closed")
+            exit(1)
+            
         
         finally:
             # Close the browser
