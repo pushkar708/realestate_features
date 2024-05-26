@@ -10,8 +10,17 @@ class App(tk.Tk):
         super().__init__()
         self.chrome_path=GetDetailsFromWeb.get_chrome_path(self)
         self.UI()
+        self.csv_file_path = os.path.join(cwd,'home_details.csv')
+        self.json_file_path = os.path.join(cwd,'home_details.json')
+        self.remove_existing()
         
-        
+    
+    def remove_existing(self):
+        if os.path.exists(self.csv_file_path):
+            os.remove(self.csv_file_path)
+        if os.path.exists(self.json_file_path):
+            os.remove(self.json_file_path)
+    
     def UI(self):
         
         
@@ -44,6 +53,7 @@ class App(tk.Tk):
             "Property Size",
             "Property Type\n(House, land, Town-house)",
             "Price",
+            "Bonds(Rent)",
             "Property Features",
             "Loan Repay Amount(Estimate)",
             "Description",
@@ -61,6 +71,7 @@ class App(tk.Tk):
             "Property Size": "property_size",
             "Property Type\n(House, land, Town-house)": "property_type",
             "Price": "property_price",
+            "Bonds(Rent)": "property_bonds",
             "Property Features": "property_features_item",
             "Loan Repay Amount(Estimate)": "loan_repay_item",
             "Description": "house_details",

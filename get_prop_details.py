@@ -40,6 +40,9 @@ class GetDetailsFromWeb():
         return chrome_path
 
     def close_driver(self,driver):
+        driver.close()
+    
+    def quit_driver(self,driver):
         driver.quit()
 
     def is_chrome_window_closed(self):
@@ -80,6 +83,14 @@ class GetDetailsFromWeb():
             property_price=driver.find_elements(By.XPATH,"//span[@class='property-price property-info__price']")
             if property_price:
                 data["Price"] = property_price[0].text
+        
+        if 'property_bonds' in self.neended_data_list:
+            if 'rent' in driver.find_elements(By.XPATH,"(//a[@class='breadcrumb__link'])[1]")[0].get_attribute("href"):
+                property_bonds=driver.find_elements(By.XPATH,"//p[@class='Text__Typography-sc-vzn7fr-0 OdxXk']")
+                if property_bonds:
+                    data["Bonds"] = property_bonds[0].text
+            else:
+                data["Bonds"] = "Not applicable"
         
         if 'loan_repay_item' in self.neended_data_list:
             loan_repay_item=driver.find_elements(By.ID,"summary-repayments-container")
@@ -170,6 +181,8 @@ class GetDetailsFromWeb():
                                     data["Bathroom"] = attribute.title()
                                 elif "parking" in attribute.lower():
                                     data["Parking"] = attribute.title()
+                                elif "study" in attribute.lower():
+                                    data["Study"] = attribute.title()
                         except Exception as e:
                             print(f"Error: {e}")
         
@@ -285,9 +298,9 @@ class GetDetailsFromWeb():
 
         # Connect to the existing Chrome instance
         driver = webdriver.Chrome(options=chrome_options)
-        action = ActionChains(driver)
 
         try:
+            time.sleep(1)
             driver.maximize_window()
         except WebDriverException as e:
             print(f"Error maximizing window: {e}")
@@ -311,7 +324,7 @@ class GetDetailsFromWeb():
                         driver.switch_to.new_window('tab')
                         time.sleep(1)
                         home_details = []
-                        counter=1
+                        counter=0
                         for url,data_list in data_dict.items():
                             if counter==2:
                                 break
@@ -322,24 +335,16 @@ class GetDetailsFromWeb():
                             home_details.append(names)
                         self.write_home_details(home_details, self.json_file_path)
                         driver.close()
+                        time.sleep(1)
                         driver.switch_to.window(original_window)
                     except Exception as e:
                         print(f"Error initializing headless WebDriver: {e}")
-                    finally:
-                        # Close the browser
-                        if driver:
-                            self.close_driver(driver)
-                        
-                        # Terminate the Chrome process opened by the script
-                        if not self.is_chrome_window_closed():
-                            chrome_process.kill()
-                            chrome_process.wait()
 
 
         except NoSuchWindowException:
             # Close the browser
             if driver:
-                self.close_driver(driver)
+                self.quit_driver(driver)
             
             # Terminate the Chrome process opened by the script
             if not self.is_chrome_window_closed():
@@ -347,13 +352,11 @@ class GetDetailsFromWeb():
                 chrome_process.wait()
             print("Selenium window closed")
             exit(1)
-        except Exception as e:
-            print(f"error here {e}")
         
         finally:
             # Close the browser
             if driver:
-                self.close_driver(driver)
+                self.quit_driver(driver)
             
             # Terminate the Chrome process opened by the script
             if not self.is_chrome_window_closed():
