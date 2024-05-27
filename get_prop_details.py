@@ -10,6 +10,8 @@ from selenium.webdriver.chrome.options import Options
 import time
 import os
 import json
+import openpyxl
+from openpyxl import Workbook
 import socket
 import random
 import pyautogui as py
@@ -25,6 +27,7 @@ class GetDetailsFromWeb():
         super().__init__()
         self.neended_data_list = needed_data_list
         self.csv_file_path = os.path.join(cwd,'home_details.csv')
+        self.xl_file_path = os.path.join(cwd,'home_details.xlsx')
         self.json_file_path = os.path.join(cwd,'home_details.json')
         print("needed data= ",self.neended_data_list)
         self.main()
@@ -103,6 +106,7 @@ class GetDetailsFromWeb():
                 data["Sold On"] = "Not applicable"
         
         if 'loan_repay_item' in self.neended_data_list:
+            time.sleep(1)
             loan_repay_item=driver.find_elements(By.ID,"summary-repayments-container")
             if loan_repay_item:
                 data["Loan Repay Amount"]=loan_repay_item[0].get_attribute("aria-label")
@@ -200,6 +204,60 @@ class GetDetailsFromWeb():
 
         return data
 
+    def json_to_excel(self, json_file_path, excel_file_path):
+        try:
+            # Read the JSON data from the file
+            with open(json_file_path, 'r', encoding='utf-8') as jsonfile:
+                data = json.load(jsonfile)
+
+            # Check if the data is a dictionary
+            if not isinstance(data, dict):
+                raise ValueError("JSON data must be a dictionary with categories as keys")
+
+            # Create a new Excel workbook
+            workbook = Workbook()
+            # Remove the default sheet created with the workbook
+            workbook.remove(workbook.active)
+
+            # Iterate over each category in the JSON data
+            for category, home_details in data.items():
+                # Create a new sheet for the category
+                sheet = workbook.create_sheet(title=category)
+
+                # Filter out empty dictionaries or dictionaries with all empty values
+                filtered_home_details = [home for home in home_details if home and any(home.values())]
+
+                if not filtered_home_details:
+                    continue  # Skip empty categories
+
+                # Collect all unique fieldnames from the dictionaries
+                fieldnames = set()
+                for home in filtered_home_details:
+                    fieldnames.update(home.keys())
+
+                fieldnames = sorted(fieldnames)  # Sort fieldnames for consistent ordering
+
+                # Write the header row
+                for col_num, fieldname in enumerate(fieldnames, 1):
+                    sheet.cell(row=1, column=col_num, value=fieldname)
+
+                # Write the data rows
+                for row_num, home in enumerate(filtered_home_details, start=2):
+                    for col_num, fieldname in enumerate(fieldnames, 1):
+                        sheet.cell(row=row_num, column=col_num, value=home.get(fieldname, "Not Available"))
+
+            # Save the workbook to the specified file path
+            workbook.save(excel_file_path)
+        except FileNotFoundError:
+            print("Json File does not exists")
+            return
+        except PermissionError:
+            print("Permision error, retry after closing the files")
+            return
+        except Exception as e:
+            print("Other Error: ",e)
+    
+    
     def json_to_csv(self,json_file_path, csv_file_path):
         # Read the JSON data from the file
         with open(json_file_path, 'r', encoding='utf-8') as jsonfile:
@@ -215,36 +273,48 @@ class GetDetailsFromWeb():
         if not filtered_home_details:
             raise ValueError("No valid data found to write to CSV")
 
+        # Collect all unique fieldnames from the dictionaries
+        fieldnames = set()
+        for home in filtered_home_details:
+            fieldnames.update(home.keys())
+
+        fieldnames = sorted(fieldnames)  # Sort fieldnames for consistent ordering
+
         # Open the CSV file for writing
         with open(csv_file_path, 'w', newline='', encoding='utf-8') as csvfile:
-            # Define the header names based on the keys of the first dictionary in filtered_home_details
-            fieldnames = filtered_home_details[0].keys()
-
             # Create a DictWriter object with the specified fieldnames and the CSV file object
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
             # Write the header row
             writer.writeheader()
 
-            # Iterate over each dictionary in filtered_home_details and write it as a row in the CSV file
+            # Iterate over each dictionary in filtered_home_details
             for home in filtered_home_details:
-                writer.writerow(home)
+                # Ensure all fieldnames are present in each row, filling missing fields with "Not Available"
+                row = {field: home.get(field, "Not Available") for field in fieldnames}
+                writer.writerow(row)
 
 
-    def write_home_details(self,home_details, json_file_path):
+    def write_home_details(self, category, home_details, json_file_path):
+        category=category.title()
         try:
+            # Initialize an empty dictionary for existing data
+            existing_data = {}
+
             # Check if the JSON file exists and read the existing data if it does
             if os.path.isfile(json_file_path):
                 with open(json_file_path, 'r', encoding='utf-8') as jsonfile:
                     try:
                         existing_data = json.load(jsonfile)
                     except json.JSONDecodeError:
-                        existing_data = []
-            else:
-                existing_data = []
+                        existing_data = {}
 
-            # Append new home details to the existing data
-            existing_data.extend(home_details)
+            # If the category is not already in existing_data, initialize it as an empty list
+            if category not in existing_data:
+                existing_data[category] = []
+
+            # Append new home details to the corresponding category in the existing data
+            existing_data[category].extend(home_details)
 
             # Write the updated data back to the JSON file
             with open(json_file_path, 'w', encoding='utf-8') as jsonfile:
@@ -254,7 +324,7 @@ class GetDetailsFromWeb():
             # Handle permission error, usually occurs if the file is open elsewhere
             new_json_file_path = os.path.join(os.path.dirname(json_file_path), 'home_details_1.json')
             with open(new_json_file_path, 'w', encoding='utf-8') as jsonfile:
-                json.dump(home_details, jsonfile, ensure_ascii=False, indent=4)
+                json.dump(existing_data, jsonfile, ensure_ascii=False, indent=4)
 
     def get_random_useragent(self):
         ua = UserAgent()
@@ -320,7 +390,7 @@ class GetDetailsFromWeb():
         original_url=''
         try:                                                                                       
             while not self.is_chrome_window_closed():
-                while not any(substring in driver.current_url.lower() for substring in ["realestate.com.au/buy/", "realestate.com.au/rent/", "realestate.com.au/sold/"]):
+                while driver is not None and not any(substring in driver.current_url.lower() for substring in ["realestate.com.au/buy/", "realestate.com.au/rent/", "realestate.com.au/sold/"]):
                     if self.is_chrome_window_closed():
                         raise NoSuchWindowException
                     time.sleep(1)
@@ -336,14 +406,16 @@ class GetDetailsFromWeb():
                         home_details = []
                         counter=0
                         for url,data_list in data_dict.items():
-                            if counter==2:
-                                break
+                            # if counter==2:
+                            #     break
                             counter+=1
                             driver.get(url)
+                            time.sleep(1)
+                            category=driver.find_elements(By.XPATH,"(//a[@class='breadcrumb__link'])[1]")[0].get_attribute("title")
                             names = self.get_page_details(driver)
                             time.sleep(random.uniform(9,15))
                             home_details.append(names)
-                        self.write_home_details(home_details, self.json_file_path)
+                        self.write_home_details(category,home_details, self.json_file_path)
                         driver.close()
                         time.sleep(1)
                         driver.switch_to.window(original_window)
@@ -361,7 +433,6 @@ class GetDetailsFromWeb():
                 chrome_process.kill()
                 chrome_process.wait()
             print("Selenium window closed")
-            exit(1)
         
         except AttributeError:
             # Close the browser
@@ -373,7 +444,6 @@ class GetDetailsFromWeb():
                 chrome_process.kill()
                 chrome_process.wait()
             print("Selenium window closed")
-            exit(1)
             
         
         finally:
@@ -385,4 +455,5 @@ class GetDetailsFromWeb():
             if not self.is_chrome_window_closed():
                 chrome_process.kill()
                 chrome_process.wait()
-            self.json_to_csv(self.json_file_path,self.csv_file_path)
+            # self.json_to_csv(self.json_file_path,self.csv_file_path)
+            self.json_to_excel(self.json_file_path,self.xl_file_path)
