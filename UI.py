@@ -15,15 +15,15 @@ class App(tk.Tk):
         self.chrome_path = GetDetailsFromWeb.get_chrome_path(self)
         self.UI()
         # Paths for CSV and JSON files
-        self.csv_file_path = os.path.join(cwd, 'home_details.csv')
+        self.xlsx_file_path = os.path.join(cwd, 'home_details.xlsx')
         self.json_file_path = os.path.join(cwd, 'home_details.json')
         # Remove existing files if they exist
         self.remove_existing()
 
     def remove_existing(self):
-        """Remove existing CSV and JSON files if they exist."""
-        if os.path.exists(self.csv_file_path):
-            os.remove(self.csv_file_path)
+        """Remove existing Excel and JSON files if they exist."""
+        if os.path.exists(self.xlsx_file_path):
+            os.remove(self.xlsx_file_path)
         if os.path.exists(self.json_file_path):
             os.remove(self.json_file_path)
 

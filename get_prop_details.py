@@ -391,6 +391,8 @@ class GetDetailsFromWeb():
                             time.sleep(1)
                             category=driver.find_elements(By.XPATH,"(//a[@class='breadcrumb__link'])[1]")[0].get_attribute("title")
                             names = self.get_page_details(driver)
+                            """Added a uniform time of sleep, to respect the rate limit applied by the server.
+                            This slows down request per minute, results in bypassing the HTTP 429 (Too Many Requests) error."""
                             time.sleep(random.uniform(9,15))
                             home_details.append(names)
                         self.write_home_details(category,home_details, self.json_file_path)
