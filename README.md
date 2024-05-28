@@ -121,6 +121,12 @@ If a blank screen appears after copying and visiting the URL, follow these steps
 3. Once the website loads in the new tab, close this tab and return to the original tab.
 4. Reload the original tab, and the scraper will now be connected to this tab.
 
+## Output
+[![Output Screen Shot][output-screenshot]]()
+
+
+
+
 ## Roadmap
 
 - [X] Automatic Data scrapper
@@ -146,3 +152,4 @@ Project Link: [https://github.com/pushkar708/realestate_features](https://github
 
 [product-screenshot]: images/screenshot.png
 [website-screenshot]: images/website.png
+[output-screenshot]: images/excel.png
