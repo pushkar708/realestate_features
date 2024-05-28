@@ -1,38 +1,35 @@
-import csv
-import subprocess
+"""Importing the needed"""
+import subprocess,os
 import psutil
 import tkinter as tk
 import pyperclip
 from selenium import webdriver
-from selenium.common.exceptions import WebDriverException
+from selenium.common.exceptions import WebDriverException,NoSuchWindowException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 import time
-import os
 import json
-import openpyxl
 from openpyxl import Workbook
-import socket
 import random
-import pyautogui as py
 from fake_useragent import UserAgent
-from selenium.common.exceptions import NoSuchWindowException
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.action_chains import ActionChains
+
+"""Making a dynamic 'current working directory' variable to use"""
 cwd = os.path.dirname(os.path.abspath(__file__))
 
 
+"""GetDetailsFromWeb is the class that
+is resposible for the data scrapping and execution"""
 class GetDetailsFromWeb():
+    """init module to initialize variables and call for the main method"""
     def __init__(self,needed_data_list):
         super().__init__()
         self.neended_data_list = needed_data_list
-        self.csv_file_path = os.path.join(cwd,'home_details.csv')
         self.xl_file_path = os.path.join(cwd,'home_details.xlsx')
         self.json_file_path = os.path.join(cwd,'home_details.json')
         print("needed data= ",self.neended_data_list)
         self.main()
-        self.json_to_csv(self.json_file_path,self.csv_file_path)
 
+    """get_chrome_path is able to fetch the chrome path input by the user"""
     def get_chrome_path(self):
         chrome_path=''
         if os.path.exists(os.path.join(cwd,"config.json")):
@@ -42,12 +39,17 @@ class GetDetailsFromWeb():
         
         return chrome_path
 
+    """close_driver closes the driver and returns to the process"""
     def close_driver(self,driver):
         driver.close()
+        return
     
+    """quit_driver quits the driver and returns to the process"""
     def quit_driver(self,driver):
         driver.quit()
+        return
 
+    """is_chrome_window_closed is a special module that checks if the chrome browser is closed or not"""
     def is_chrome_window_closed(self):
         for window in psutil.process_iter(['pid', 'name']):
             try:
@@ -57,6 +59,8 @@ class GetDetailsFromWeb():
                 pass
         return True
 
+    """get_chrome_process is a module that fetches the chrome path from the user input,
+    add some parameters to the script, and open the chrome window with a remote debugger attached to it"""
     def get_chrome_process(self):
         chrome_path = self.get_chrome_path()
             
@@ -70,6 +74,8 @@ class GetDetailsFromWeb():
             
         return chrome_process,remote_debugging_port
 
+    """get_page_details is a module that does all the scrapping from the
+    webpage according to the options selected by the user in the UI.py file"""
     def get_page_details(self,driver):
         time.sleep(1)
         features=[]
@@ -203,7 +209,8 @@ class GetDetailsFromWeb():
         data["Property URL"]=driver.current_url
 
         return data
-
+    
+    """json_to_excel as the name says, it converts json file into the excel file with a special format"""
     def json_to_excel(self, json_file_path, excel_file_path):
         try:
             # Read the JSON data from the file
@@ -256,45 +263,10 @@ class GetDetailsFromWeb():
             return
         except Exception as e:
             print("Other Error: ",e)
+
     
-    
-    def json_to_csv(self,json_file_path, csv_file_path):
-        # Read the JSON data from the file
-        with open(json_file_path, 'r', encoding='utf-8') as jsonfile:
-            home_details = json.load(jsonfile)
-
-        # Check if home_details is a list of dictionaries
-        if not isinstance(home_details, list) or not all(isinstance(i, dict) for i in home_details):
-            raise ValueError("JSON data must be a list of dictionaries")
-
-        # Filter out empty dictionaries or dictionaries with all empty values
-        filtered_home_details = [home for home in home_details if home and any(home.values())]
-
-        if not filtered_home_details:
-            raise ValueError("No valid data found to write to CSV")
-
-        # Collect all unique fieldnames from the dictionaries
-        fieldnames = set()
-        for home in filtered_home_details:
-            fieldnames.update(home.keys())
-
-        fieldnames = sorted(fieldnames)  # Sort fieldnames for consistent ordering
-
-        # Open the CSV file for writing
-        with open(csv_file_path, 'w', newline='', encoding='utf-8') as csvfile:
-            # Create a DictWriter object with the specified fieldnames and the CSV file object
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
-            # Write the header row
-            writer.writeheader()
-
-            # Iterate over each dictionary in filtered_home_details
-            for home in filtered_home_details:
-                # Ensure all fieldnames are present in each row, filling missing fields with "Not Available"
-                row = {field: home.get(field, "Not Available") for field in fieldnames}
-                writer.writerow(row)
-
-
+    """write_home_details is the module that takes the scrapped data, and write it to the json file
+    that can be used to create a excel file afterwards"""
     def write_home_details(self, category, home_details, json_file_path):
         category=category.title()
         try:
@@ -326,12 +298,18 @@ class GetDetailsFromWeb():
             with open(new_json_file_path, 'w', encoding='utf-8') as jsonfile:
                 json.dump(existing_data, jsonfile, ensure_ascii=False, indent=4)
 
+    
+    """get_random_useragent uses a module from fake_agent,
+    that provides a random user agent to the process created.
+    This module is used to try to bypass the HTTP error 429 ( Too Many Requests )"""
     def get_random_useragent(self):
         ua = UserAgent()
         chrome_user_agent = ua.chrome
         return chrome_user_agent
 
-    def get_data(self,driver):
+    
+    """get_urls is the module that scrapps first 25 URLs from the page and passes it to the scrapper"""
+    def get_urls(self,driver):
         data_dict={}
         house_names = driver.find_elements(By.XPATH, "//a[@class='details-link residential-card__details-link']//span")
         house_url = driver.find_elements(By.XPATH, "//a[@class='details-link residential-card__details-link']")
@@ -339,6 +317,7 @@ class GetDetailsFromWeb():
             data_dict[urls.get_attribute("href")]=names.get_attribute('innerHTML')
         return(data_dict)
 
+    """show_info_with_copy_button is a minute module for the Tkinter"""
     def show_info_with_copy_button(self,master_url):
         def on_ok():
             root.destroy()
@@ -365,7 +344,8 @@ class GetDetailsFromWeb():
 
         root.wait_window(root)
     
-    
+    """main is the main module that consists of the scrapped data.
+    It manages the work flow. It calls the existing modules and magages the file and the data"""
     def main(self):
         master_url="https://www.realestate.com.au/"
         chrome_process,port=self.get_chrome_process()
@@ -398,7 +378,7 @@ class GetDetailsFromWeb():
                     original_url=driver.current_url
                     original_window = driver.current_window_handle
                     # If the URL contains '/buy/', fetch the data
-                    data_dict = self.get_data(driver=driver)
+                    data_dict = self.get_urls(driver=driver)
                     time.sleep(1)
                     try:
                         driver.switch_to.new_window('tab')
@@ -406,8 +386,6 @@ class GetDetailsFromWeb():
                         home_details = []
                         counter=0
                         for url,data_list in data_dict.items():
-                            # if counter==2:
-                            #     break
                             counter+=1
                             driver.get(url)
                             time.sleep(1)
@@ -455,5 +433,4 @@ class GetDetailsFromWeb():
             if not self.is_chrome_window_closed():
                 chrome_process.kill()
                 chrome_process.wait()
-            # self.json_to_csv(self.json_file_path,self.csv_file_path)
             self.json_to_excel(self.json_file_path,self.xl_file_path)
