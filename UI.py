@@ -29,7 +29,7 @@ class App(tk.Tk):
 
     def UI(self):
         """Set up the user interface for the application."""
-        self.title("Sample Tkinter App")
+        self.title("Data Scrapper for the Website")
         self.geometry("800x600")
 
         # Label for website input
